@@ -1255,6 +1255,7 @@ name = "inox2d-webgl"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bytes",
  "console_error_panic_hook",
  "dioxus",
  "dioxus-html-macro",
