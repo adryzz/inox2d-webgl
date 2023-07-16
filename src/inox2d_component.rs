@@ -75,7 +75,7 @@ async fn run() -> anyhow::Result<()> {
 
     info!("Loading puppet");
     let res = reqwest::Client::new()
-        .get(format!("{}/assets/arch-chan.inp"))
+        .get(format!("{}/assets/arch-chan.inp", base_url()))
         .send()
         .await?;
 
