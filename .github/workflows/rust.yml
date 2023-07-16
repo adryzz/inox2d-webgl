@@ -14,7 +14,13 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v337
+      
+    - name: Install wasm32-unknown-unknown target
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: nightly
+        target: wasm32-unknown-unknown
       
     - name: Set up trunk
       uses: jetli/trunk-action@v0.4.0
