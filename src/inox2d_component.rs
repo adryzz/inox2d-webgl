@@ -75,7 +75,7 @@ async fn run() -> anyhow::Result<()> {
 
     info!("Loading puppet");
     let res = reqwest::Client::new()
-        .get(format!("{}/assets/arch-chan.inp", base_url()))
+        .get("https://raw.githubusercontent.com/RavioliMavioli/archlive2d/main/Inochi2D/Arch%20Chan%20Model.inp")
         .send()
         .await?;
 
