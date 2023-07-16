@@ -97,10 +97,4 @@ impl WasmSceneController {
     pub fn current_elapsed(&self) -> f32 {
         self.current_elapsed
     }
-
-    reset(&mut self) {
-        self.hard_scale = Vec2::default();
-        self.camera_pos = Vec2::default();
-        window.request_redraw();
-    }
 }
