@@ -36,6 +36,12 @@ jobs:
       
     - name: Set up trunk
       uses: jetli/trunk-action@v0.4.0
+
+    - name: Pull models because CORS
+      run: "mkdir assets"
+
+    - name: Pull models because CORS part 2
+      run: "wget https://raw.githubusercontent.com/RavioliMavioli/archlive2d/main/Inochi2D/Arch%20Chan%20Model.inp -o assets/arch-chan.inp"
       
     - name: Build
       run: "trunk build --release --public-url inox2d-webgl"
