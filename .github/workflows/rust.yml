@@ -3,8 +3,6 @@ name: Rust
 on:
   push:
     branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -15,10 +13,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Set up trunk
+      uses: jetli/trunk-action@v0.4.0
+      
     - name: Build
-    - uses: jetli/trunk-action@v0.4.0
-    - run: "trunk build --release"
+      run: "trunk build --release"
       
     - name: Deploy
       uses: peaceiris/actions-gh-pages@v3
