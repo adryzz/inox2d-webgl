@@ -50,8 +50,15 @@ impl WasmSceneController {
                 self.camera_pos + (self.mouse_pos - self.mouse_pos_held) / camera.scale;
         }
 
-        if self.hard_scale.x > 10000.0 || self.hard_scale.y > 10000.0 || self.hard_scale.x < 0.01|| self.hard_scale.y < 0.01 {
-            self.hard_scale = vec2(self.hard_scale.x.clamp(0.01, 10000.0), self.hard_scale.y.clamp(0.01, 10000.0));
+        if self.hard_scale.x > 10000.0
+            || self.hard_scale.y > 10000.0
+            || self.hard_scale.x < 0.01
+            || self.hard_scale.y < 0.01
+        {
+            self.hard_scale = vec2(
+                self.hard_scale.x.clamp(0.01, 10000.0),
+                self.hard_scale.y.clamp(0.01, 10000.0),
+            );
         }
 
         // Frame interval
@@ -82,14 +89,14 @@ impl WasmSceneController {
                     MouseScrollDelta::PixelDelta(pos) => pos.y as f32 * 0.1,
                 };
 
-                self.hard_scale *= 2_f32.powf(self.scroll_speed * my * 0.1)
-                .clamp(0.01, 10000.0);
+                self.hard_scale *= 2_f32
+                    .powf(self.scroll_speed * my * 0.1)
+                    .clamp(0.01, 10000.0);
                 info!("my: {}\nhard_scale: {}", my, self.hard_scale);
 
                 window.request_redraw();
             }
-            WindowEvent::ReceivedCharacter(a) => {
-            }
+            WindowEvent::ReceivedCharacter(a) => {}
             _ => (),
         }
     }

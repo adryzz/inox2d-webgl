@@ -1,7 +1,7 @@
 use dioxus::prelude::*;
 use dioxus_html_macro::html;
-mod scene;
 mod inox2d_component;
+mod scene;
 use crate::inox2d_component::inox2d_component;
 
 fn create_window(
@@ -16,6 +16,7 @@ fn create_window(
         .with_inner_size(PhysicalSize::new(1280, 720))
         .build(event)?;
 
+    tracing::debug!("{:?}", window.canvas());
     web_sys::window()
         .and_then(|win| win.document())
         .and_then(|doc| doc.body())
@@ -181,12 +182,11 @@ fn main() {
 
 // create a component that renders a div with the text "Hello, world!"
 fn app(cx: Scope) -> Element {
-
     /*let renderer = use_future(cx, (), |()| async move {
         runwrap().await;
     });*/
     cx.render(html!(
-        <inox2d_component href="{base_url()}/assets/puppet.inp"></inox2d_component>
+        <inox2d_component href="{base_url()}/assets/puppet.inp" width={1280} height={720}></inox2d_component>
         //<canvas id="canvaas" width="1280" height="720" tabindex="0" data_rawhandle="1"></canvas>
     ))
 }
