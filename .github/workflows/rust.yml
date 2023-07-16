@@ -38,7 +38,7 @@ jobs:
       uses: jetli/trunk-action@v0.4.0
       
     - name: Build
-      run: "trunk build --release"
+      run: "trunk build --release --public-url inox2d-webgl"
     
     - name: Move dist directory
       run: "mv ./dist ./_site"
