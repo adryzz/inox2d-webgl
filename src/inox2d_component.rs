@@ -4,6 +4,7 @@ use dioxus::prelude::use_future;
 use dioxus::prelude::*;
 use dioxus_html_macro::html;
 use glam::{uvec2, Vec2};
+use inox2d::model::Model;
 use inox2d::{formats::inp::parse_inp, render::opengl::OpenglRenderer};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -20,46 +21,49 @@ use winit::platform::web::WindowExtWebSys;
 use winit::window::WindowBuilder;
 use bytes::Bytes;
 use crate::base_url;
-use crate::request_animation_frame;
 
 #[inline_props]
 pub fn inox2d_component<'a>(cx: Scope, href: &'a str, width: u32, height: u32) -> Element<'a> {
     let uri = href.to_string();
-    /*let puppet = use_future(cx, (), |()| async move {
+
+    let renderer = use_coroutine(cx, |mut model_channel: UnboundedReceiver<Model>| async move {
+        runwrap(&mut model_channel).await
+    });
+
+    let puppet = use_future(cx, (renderer,), |(renderer,)| async move {
         let res = reqwest::Client::new()
         .get(uri)
         .send()
-        .await?
+        .await.unwrap()
         .bytes()
         .await.unwrap();
 
-        return parse_inp(res.as_ref()).unwrap();
-    });*/
-
-    let renderer = use_future(cx, (), |()| async move {
-        runwrap().await
+        info!("Model received");
+    
+        let model = parse_inp(res.as_ref()).unwrap();
+        info!("Model parsed");
+        renderer.send(model);
+        info!("Model sent");
     });
     cx.render(html!(
-<div class="flex justify-center items-center h-screen">
-  <div class="relative w-1/2">
-    <canvas id="canvas" width="{width}" height="{height}" tabindex="0" class="border-4 border-gray-500 rounded-lg aspect-w-1 aspect-h-2"></canvas>
-      <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3/4">
-        //<div class="bg-blue-500 h-2 rounded-full"></div>
-      </div>
-    </div>
-    <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 mb-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-      <button class="w-8 h-8 rounded-full bg-red-500 mx-1">
-        <span class="sr-only">"Reset"</span>
-      </button>
-      <button class="w-8 h-8 rounded-full bg-green-500 mx-1">
-        <span class="sr-only">"Follow mouse with eyes"</span>
-      </button>
-    </div>
-  </div>
+        <div class="flex justify-center items-center flex-col m-2 max-w-sm">
+            <canvas id="canvas" width="{width}" height="{height}" tabindex="0" class="border-4 border-gray-500 rounded-lg aspect-w-1 aspect-h-2"></canvas>
+                //<div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3/4">
+                    //<div class="bg-blue-500 h-2 rounded-full"></div>
+                //</div>
+            <div class="m-2 flex flex-row w-full">
+                <button class="w-1/2 h-8 rounded-lg border-4 border-gray-500 mx-1">
+                    <span class="">"Reset"</span>
+                </button>
+                <button class="w-1/2 h-8 rounded-lg border-4 border-gray-500 mx-1">
+                    <span class="">"Follow mouse with eyes"</span>
+                </button>
+            </div>
+        </div>
     ))
 }
 
-async fn run() -> anyhow::Result<()> {
+async fn run(model_channel: &mut UnboundedReceiver<Model>) -> anyhow::Result<()> {
     let canvas = get_canvas_element().ok_or(anyhow!("Couldn't find canvas"))?;
 
     let canvas_size = (canvas.width(), canvas.height());
@@ -73,14 +77,10 @@ async fn run() -> anyhow::Result<()> {
 
     let gl = setup_wgl2(canvas)?;
 
-    info!("Loading puppet");
-    let res = reqwest::Client::new()
-        .get("https://raw.githubusercontent.com/RavioliMavioli/archlive2d/main/Inochi2D/Arch%20Chan%20Model.inp")
-        .send()
-        .await?;
+    info!("Waiting for model");
+    
+    let model = wait_for_model(model_channel).await?;
 
-    let model_bytes = res.bytes().await?;
-    let model = parse_inp(model_bytes.as_ref())?;
     let puppet = model.puppet;
 
     info!("Initializing Inox2D renderer");
@@ -158,8 +158,8 @@ async fn run() -> anyhow::Result<()> {
     })
 }
 
-async fn runwrap() {
-    match run().await {
+async fn runwrap(model_channel: &mut UnboundedReceiver<Model>) {
+    match run(model_channel).await {
         Ok(_) => tracing::info!("Shutdown"),
         Err(e) => tracing::error!("Fatal crash: {}", e),
     }
@@ -215,4 +215,30 @@ fn setup_wgl2(canvas: HtmlCanvasElement) -> anyhow::Result<glow::Context> {
     }?;
 
     Ok(glow::Context::from_webgl2_context(wgl2))
+}
+
+
+fn request_animation_frame(f: &wasm_bindgen::prelude::Closure<dyn FnMut()>) {
+    use wasm_bindgen::JsCast;
+    web_sys::window()
+        .unwrap()
+        .request_animation_frame(f.as_ref().unchecked_ref())
+        .expect("Couldn't register `requestAnimationFrame`");
+}
+
+async fn wait_for_model(receiver: &mut UnboundedReceiver<Model>) -> anyhow::Result<Model> {
+    loop {
+        match receiver.try_next() {
+            Ok(Some(model)) => {
+                return Ok(model);
+            }
+            Ok(None) => {
+                return Err(anyhow!("Couldn't receive model"));
+            }
+            Err(e) => {
+                let delay = wasm_timer::Delay::new(web_time::Duration::from_millis(100));
+                delay.await?; // Introduce a delay before the next attempt
+            }
+        }
+    }
 }
