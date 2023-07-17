@@ -96,7 +96,13 @@ impl WasmSceneController {
 
                 window.request_redraw();
             }
-            WindowEvent::ReceivedCharacter(a) => {}
+            WindowEvent::ReceivedCharacter(a) => {
+                if *a == 'r' {
+                    self.hard_scale = Vec2::splat(0.15);
+                    self.camera_pos = Vec2::default();
+                    window.request_redraw();
+                }
+            }
             _ => (),
         }
     }

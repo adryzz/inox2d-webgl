@@ -12,36 +12,37 @@ use tracing::info;
 use wasm_bindgen::prelude::Closure;
 use wasm_bindgen::JsCast;
 use web_sys::HtmlCanvasElement;
-use web_sys::Window;
-use winit::event::{Event, WindowEvent};
-
 use winit::dpi::PhysicalSize;
+use winit::event::{Event, WindowEvent};
 use winit::platform::web::WindowBuilderExtWebSys;
-use winit::platform::web::WindowExtWebSys;
 use winit::window::WindowBuilder;
-use bytes::Bytes;
-use crate::base_url;
 
 #[inline_props]
 pub fn inox2d_component<'a>(cx: Scope, href: &'a str, width: u32, height: u32) -> Element<'a> {
     let uri = href.to_string();
 
-    let renderer = use_coroutine(cx, |mut model_channel: UnboundedReceiver<Model>| async move {
-        runwrap(&mut model_channel).await
-    });
+    let renderer = use_coroutine(
+        cx,
+        |mut model_channel: UnboundedReceiver<Model>| async move { runwrap(&mut model_channel).await },
+    );
 
-    let puppet = use_future(cx, (renderer,), |(renderer,)| async move {
+    let _puppet = use_future(cx, (renderer,), |(renderer,)| async move {
+        info!("Downloading model...");
+
         let res = reqwest::Client::new()
-        .get(uri)
-        .send()
-        .await.unwrap()
-        .bytes()
-        .await.unwrap();
+            .get(uri)
+            .send()
+            .await
+            .unwrap()
+            .bytes()
+            .await
+            .unwrap();
 
         info!("Model received");
-    
+
         let model = parse_inp(res.as_ref()).unwrap();
         info!("Model parsed");
+
         renderer.send(model);
         info!("Model sent");
     });
@@ -64,6 +65,7 @@ pub fn inox2d_component<'a>(cx: Scope, href: &'a str, width: u32, height: u32) -
 }
 
 async fn run(model_channel: &mut UnboundedReceiver<Model>) -> anyhow::Result<()> {
+    info!("Initializing canvas...");
     let canvas = get_canvas_element().ok_or(anyhow!("Couldn't find canvas"))?;
 
     let canvas_size = (canvas.width(), canvas.height());
@@ -77,18 +79,18 @@ async fn run(model_channel: &mut UnboundedReceiver<Model>) -> anyhow::Result<()>
 
     let gl = setup_wgl2(canvas)?;
 
-    info!("Waiting for model");
-    
+    info!("Waiting for model...");
+
     let model = wait_for_model(model_channel).await?;
 
     let puppet = model.puppet;
 
-    info!("Initializing Inox2D renderer");
+    info!("Initializing Inox2D renderer...");
     let window_size = window.inner_size();
     let viewport = uvec2(window_size.width, window_size.height);
     let mut renderer = OpenglRenderer::new(gl, viewport, &puppet)?;
 
-    info!("Uploading model textures");
+    info!("Uploading model textures...");
     renderer.upload_model_textures(&model.textures)?;
     renderer.camera.scale = Vec2::splat(0.15);
     info!("Inox2D renderer initialized");
@@ -118,7 +120,7 @@ async fn run(model_channel: &mut UnboundedReceiver<Model>) -> anyhow::Result<()>
             {
                 let mut puppet = puppet.borrow_mut();
                 puppet.begin_set_params();
-                let t = scene_ctrl.borrow().current_elapsed();
+                let _t = scene_ctrl.borrow().current_elapsed();
                 //puppet.set_param("Head:: Yaw-Pitch", Vec2::new(t.cos(), t.sin()));
                 puppet.end_set_params();
             }
@@ -217,9 +219,7 @@ fn setup_wgl2(canvas: HtmlCanvasElement) -> anyhow::Result<glow::Context> {
     Ok(glow::Context::from_webgl2_context(wgl2))
 }
 
-
 fn request_animation_frame(f: &wasm_bindgen::prelude::Closure<dyn FnMut()>) {
-    use wasm_bindgen::JsCast;
     web_sys::window()
         .unwrap()
         .request_animation_frame(f.as_ref().unchecked_ref())
@@ -235,7 +235,7 @@ async fn wait_for_model(receiver: &mut UnboundedReceiver<Model>) -> anyhow::Resu
             Ok(None) => {
                 return Err(anyhow!("Couldn't receive model"));
             }
-            Err(e) => {
+            Err(_) => {
                 let delay = wasm_timer::Delay::new(web_time::Duration::from_millis(100));
                 delay.await?; // Introduce a delay before the next attempt
             }
