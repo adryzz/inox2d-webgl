@@ -15,6 +15,7 @@ dioxus-web = "0.3.2"
 glam = "0.24.0"
 glow = "0.12.1"
 inox2d = { git = "https://github.com/Inochi2D/inox2d.git" }
+inox2d-opengl = { git = "https://github.com/Inochi2D/inox2d.git" }
 js-sys = "0.3.64"
 reqwest = "0.11.18"
 tracing = "0.1.37"

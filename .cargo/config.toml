@@ -1,2 +1,2 @@
 [build]
-rustflags = ["-Copt-level=z", "--cfg=web_sys_unstable_apis"]
+rustflags = ["--cfg=web_sys_unstable_apis"]

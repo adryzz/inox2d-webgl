@@ -3,9 +3,11 @@ use anyhow::anyhow;
 use dioxus::prelude::use_future;
 use dioxus::prelude::*;
 use dioxus_html_macro::html;
-use glam::{uvec2, Vec2};
+use glam::Vec2;
 use inox2d::model::Model;
-use inox2d::{formats::inp::parse_inp, render::opengl::OpenglRenderer};
+use inox2d::formats::inp::parse_inp;
+use inox2d::render::InoxRenderer;
+use inox2d_opengl::OpenglRenderer;
 use std::cell::RefCell;
 use std::rc::Rc;
 use tracing::info;
@@ -83,15 +85,25 @@ async fn run(model_channel: &mut UnboundedReceiver<Model>) -> anyhow::Result<()>
 
     let model = wait_for_model(model_channel).await?;
 
-    let puppet = model.puppet;
+    info!("== Puppet Meta ==\n{}", &model.puppet.meta);
+    info!("== Nodes ==\n{}", &model.puppet.nodes);
+    if model.vendors.is_empty() {
+        info!("(No Vendor Data)\n");
+    } else {
+        info!("== Vendor Data ==");
+        for vendor in &model.vendors {
+            info!("{vendor}");
+        }
+    }
 
     info!("Initializing Inox2D renderer...");
     let window_size = window.inner_size();
-    let viewport = uvec2(window_size.width, window_size.height);
-    let mut renderer = OpenglRenderer::new(gl, viewport, &puppet)?;
+    let mut renderer = OpenglRenderer::new(gl)?;
+    renderer.prepare(&model)?;
+    renderer.resize(window_size.width, window_size.height);
 
     info!("Uploading model textures...");
-    renderer.upload_model_textures(&model.textures)?;
+    //renderer.upload_model_textures(&model.textures)?;
     renderer.camera.scale = Vec2::splat(0.15);
     info!("Inox2D renderer initialized");
 
@@ -101,7 +113,7 @@ async fn run(model_channel: &mut UnboundedReceiver<Model>) -> anyhow::Result<()>
     // Winit won't help us :(
     let scene_ctrl = Rc::new(RefCell::new(scene_ctrl));
     let renderer = Rc::new(RefCell::new(renderer));
-    let puppet = Rc::new(RefCell::new(puppet));
+    let puppet = Rc::new(RefCell::new(model.puppet));
 
     // Setup continuous animation loop
     {
