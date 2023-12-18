@@ -18,6 +18,7 @@ use winit::dpi::PhysicalSize;
 use winit::event::{Event, WindowEvent};
 use winit::platform::web::WindowBuilderExtWebSys;
 use winit::window::WindowBuilder;
+use inox2d::puppet::PuppetMeta;
 
 #[inline_props]
 pub fn inox2d_component<'a>(cx: Scope, href: &'a str, width: u32, height: u32) -> Element<'a> {
@@ -28,7 +29,7 @@ pub fn inox2d_component<'a>(cx: Scope, href: &'a str, width: u32, height: u32) -
         |mut model_channel: UnboundedReceiver<Model>| async move { runwrap(&mut model_channel).await },
     );
 
-    let _puppet = use_future(cx, (renderer,), |(renderer,)| async move {
+    let puppet_meta = use_future(cx, (renderer,), |(renderer,)| async move {
         info!("Downloading model...");
 
         let res = reqwest::Client::new()
@@ -45,25 +46,76 @@ pub fn inox2d_component<'a>(cx: Scope, href: &'a str, width: u32, height: u32) -
         let model = parse_inp(res.as_ref()).unwrap();
         info!("Model parsed");
 
+        let meta = model.puppet.meta.clone();
+
         renderer.send(model);
         info!("Model sent");
+
+        meta
     });
+
     cx.render(html!(
-        <div class="flex justify-center items-center flex-col m-2 max-w-sm">
-            <canvas id="canvas" width="{width}" height="{height}" tabindex="0" class="border-4 border-gray-500 rounded-lg aspect-w-1 aspect-h-2"></canvas>
-                //<div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3/4">
-                    //<div class="bg-blue-500 h-2 rounded-full"></div>
-                //</div>
-            <div class="m-2 flex flex-row w-full">
-                <button class="w-1/2 h-8 rounded-lg border-4 border-gray-500 mx-1">
-                    <span class="">"Reset"</span>
-                </button>
-                <button class="w-1/2 h-8 rounded-lg border-4 border-gray-500 mx-1">
-                    <span class="">"Follow mouse with eyes"</span>
-                </button>
+        <div class="flex justify-center items-center flex-row m-2 max-w-sm">
+            <div class="flex justify-center items-center flex-col m-2 max-w-sm">
+                <canvas id="canvas" width="{width}" height="{height}" tabindex="0" class="border-4 border-gray-500 rounded-lg aspect-w-1 aspect-h-2"></canvas>
+                    //<div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3/4">
+                        //<div class="bg-blue-500 h-2 rounded-full"></div>
+                    //</div>
+                <div class="m-2 flex flex-row w-full">
+                    <button class="w-1/2 h-8 rounded-lg border-4 border-gray-500 mx-1">
+                        <span class="">"Reset"</span>
+                    </button>
+                    <button class="w-1/2 h-8 rounded-lg border-4 border-gray-500 mx-1">
+                        <span class="">"Follow mouse with eyes"</span>
+                    </button>
+                </div>
+            </div>
+            <div class="w-1/2 h-8 rounded-lg border-4 border-gray-500 mx-1">
+                <puppet_meta_info meta={puppet_meta.value()}></puppet_meta_info>
             </div>
         </div>
     ))
+}
+
+#[inline_props]
+fn puppet_meta_info<'a>(cx: Scope, meta: Option<Option<&'a PuppetMeta>>) -> Element {
+    cx.render(match meta.flatten() {
+        Some(m) => html!(
+            <dl>
+                <puppet_meta_field field_name={"Name"} field={m.name.clone()}></puppet_meta_field>
+                <puppet_meta_field field_name={"Artist"} field={m.artist.clone()}></puppet_meta_field>
+                <puppet_meta_field field_name={"Rigger"} field={m.rigger.clone()}></puppet_meta_field>
+                <puppet_meta_field field_name={"Name"} field={m.name.clone()}></puppet_meta_field>
+                <dt>"Version"</dt>
+                <dd>{m.version.clone()}</dd>
+                <puppet_meta_field field_name={"Copyright"} field={m.copyright.clone()}></puppet_meta_field>
+                <puppet_meta_field field_name={"License URL"} field={m.license_url.clone()}></puppet_meta_field>
+                <puppet_meta_field field_name={"Contact"} field={m.contact.clone()}></puppet_meta_field>
+                <puppet_meta_field field_name={"Reference"} field={m.reference.clone()}></puppet_meta_field>
+            </dl>
+        ),
+        None => html!(
+            <div>
+            </div>
+        )
+    })
+}
+
+#[inline_props]
+fn puppet_meta_field(cx: Scope, field_name: &'static str, field: Option<Option<String>>) -> Element {
+    cx.render(match field.clone().flatten() {
+        Some(m) => rsx!(
+            dt {
+                field_name.clone()
+            }
+            dd {
+                m
+            }
+        ),
+        None => rsx!(
+            div {}
+        )
+    })
 }
 
 async fn run(model_channel: &mut UnboundedReceiver<Model>) -> anyhow::Result<()> {
